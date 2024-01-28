@@ -1,0 +1,11 @@
+name = EasyDDB Instagram Block
+description = Creates a block that displays images from instagram by hashtag.
+core = 7.x
+
+files[] = easyddb_instagram_block.lib.php
+
+dependencies[] = block
+
+version = "7.x-1.0"
+project = "easyddb_instagram_block"
+

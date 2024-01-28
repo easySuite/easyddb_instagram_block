@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * @file
+ * File to handle module operations performed when (un-)installing module.
+ */
+
+/**
+ * Implements hook_install().
+ *
+ * Creates config variables.
+ */
+function easyddb_instagram_block_install() {
+
+  $insta_block = array(
+    'hashtag' => '',
+    'media_edge' => ENDPOINT_MEDIA_RECENT,
+    'count' => '4',
+    'width' => '100',
+    'height' => '100',
+  );
+
+  variable_set('easyddb_instagram_block_hashtag_media_block_settings', $insta_block);
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * Deletes variables.
+ */
+function easyddb_instagram_block_uninstall() {
+  variable_del('easyddb_instagram_block_hashtag_media_block_settings');
+  variable_del('easyddb_instagram_block_access_token');
+  variable_del('easyddb_instagram_block_access_token_expires');
+  variable_del('easyddb_instagram_block_fb_app_id');
+  variable_del('easyddb_instagram_block_fb_app_secret');
+  variable_del('easyddb_instagram_block_ig_user_id');
+  variable_del('easyddb_instagram_block_hashtag');
+  variable_del('easyddb_instagram_block_hashtag_id');
+}

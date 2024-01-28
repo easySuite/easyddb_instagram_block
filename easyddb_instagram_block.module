@@ -1,0 +1,332 @@
+<?php
+
+use Bpi\Sdk\Facets;
+
+/**
+ * @file
+ * Module file for the easyddb_instagram_block module.
+ */
+
+/*
+ * @const string module configuration path.
+ */
+const IG_BLOCK_BASE_SETTINGS_PATH = 'admin/config/services/easyddb_instagram_block';
+/*
+ * @const string module login path.
+ */
+const IG_BLOCK_BASE_SETTINGS_PATH_LOGIN = 'admin/config/services/easyddb_instagram_block/login';
+/*
+ * @const string module logout path.
+ */
+const IG_BLOCK_BASE_SETTINGS_PATH_LOGOUT = 'admin/config/services/easyddb_instagram_block/logout';
+
+/**
+ * Implements hook_block_info().
+ *
+ * Defines the new instagram block.
+ */
+function easyddb_instagram_block_block_info() {
+  $hashtag_media_config = variable_get('easyddb_instagram_block_hashtag_media_block_settings', []);
+  $blocks['easyddb_instagram_block_hashtag_media'] = array(
+    'info' => t('Instagram Block - Hashtag Media'),
+    'cache' => isset($hashtag_media_config['block_cache']) ? $hashtag_media_config['block_cache'] : DRUPAL_CACHE_GLOBAL,
+  );
+
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_configure().
+ *
+ * Set values to be used when rendering the block later.
+ */
+function easyddb_instagram_block_block_configure($delta = '') {
+  $form = [];
+  $description = '';
+
+  $empty = ['access_token' => ''];
+
+  $form['#admin_data'] = variable_get('easyddb_instagram_block_admin_settings', $empty);
+
+  $form['description'] = [
+    '#title' => t('Description'),
+    '#type' => 'item',
+    '#markup' => '',
+    '#weight' => -50,
+  ];
+
+  $form['hashtag'] = [
+    '#type' => 'textfield',
+    '#title' => t('Instagram Hashtag'),
+    '#description' => t('Instagram hashtag that will be used for searching media (without # symbol)'),
+  ];
+
+  $form['media_edge'] = [
+    '#type' => 'select',
+    '#title' => t('Media type'),
+    '#description' => t('Choose the media type to get.'),
+    '#options' => [
+      ENDPOINT_MEDIA_TOP => t('Top Media'),
+      ENDPOINT_MEDIA_RECENT => t('Recent Media'),
+    ],
+  ];
+
+  $form['count'] = [
+    '#type' => 'textfield',
+    '#title' => t('Number of images to display.'),
+  ];
+
+  $form['width'] = [
+    '#type' => 'textfield',
+    '#title' => t('Image width in pixels.'),
+  ];
+
+  $form['height'] = [
+    '#type' => 'textfield',
+    '#title' => t('Image height in pixels.'),
+  ];
+
+  $form['block_cache'] = [
+    '#type' => 'select',
+    '#title' => t('Block Cache Settings'),
+    '#description' => t('Configure block caching.'),
+    '#options' => [
+      DRUPAL_CACHE_GLOBAL => t('Cache block globally'),
+      DRUPAL_NO_CACHE => t('Don\'t cache block'),
+    ],
+  ];
+
+  switch ($delta) {
+    case 'easyddb_instagram_block_hashtag_media':
+      $form['#block_data'] = variable_get('easyddb_instagram_block_hashtag_media_block_settings', []);
+      $description = t('Configurations in this block utilize the !globalconfig.', array(
+        '!globalconfig' => l(t('global configuration'), IG_BLOCK_BASE_SETTINGS_PATH),
+      ));
+
+      $form['hashtag']['#default_value'] = $form['#block_data']['hashtag'] ?? variable_get('easyddb_instagram_block_hashtag', '');
+      $form['media_edge']['#default_value'] = $form['#block_data']['media_edge'] ?? ENDPOINT_MEDIA_RECENT;
+      $form['count']['#default_value'] = $form['#block_data']['count'] ?? 0;
+      $form['width']['#default_value'] = $form['#block_data']['width'] ?? 100;
+      $form['height']['#default_value'] = $form['#block_data']['height'] ?? 100;
+      $form['block_cache']['#default_value'] = $form['#block_data']['block_cache'] ?? DRUPAL_CACHE_GLOBAL;
+      break;
+  }
+
+  $form['description']['#markup'] = $description;
+
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ *
+ * Save the information from the configuration form to a drupal variable.
+ */
+function easyddb_instagram_block_block_save($delta = '', $edit = []) {
+  switch ($delta) {
+    case 'easyddb_instagram_block_hashtag_media':
+      $variables = variable_get('easyddb_instagram_block_hashtag_media_block_settings', []);
+      $save_values = array_merge($variables, $edit);
+      variable_set('easyddb_instagram_block_hashtag_media_block_settings', $save_values);
+      // Save hashtag name and id in basic settings.
+      variable_set('easyddb_instagram_block_hashtag', $save_values['hashtag']);
+      $user_id = variable_get('easyddb_instagram_block_ig_user_id', '');
+      $access_token = variable_get('easyddb_instagram_block_access_token', '');
+      $request = new InstagramDataRequest($user_id, $access_token);
+      $hashtag_id = $request->requestHashtagId($save_values['hashtag']);
+      variable_set('easyddb_instagram_block_hashtag_id', $hashtag_id);
+
+      $block['subject'] = t('Instagram Block - Hashtag Media');
+      break;
+  }
+}
+
+/**
+ * Implements hook_block_view().
+ *
+ * Fetches the instagram photos and creates a render array.
+ */
+function easyddb_instagram_block_block_view($delta = '') {
+  $user_id = variable_get('easyddb_instagram_block_ig_user_id', '');
+  $access_token = variable_get('easyddb_instagram_block_access_token', '');
+  $access_token_expire = variable_get('easyddb_instagram_block_access_token_expires', 0);
+  $token_available = !empty($access_token) && ($access_token_expire > REQUEST_TIME);
+  $hashtag_id = variable_get('easyddb_instagram_block_hashtag_id', '');
+
+  $content = [];
+  $block = [
+    'subject' => t('Instagram block'),
+    'content' => [
+      '#attached' => [
+        'css' => [drupal_get_path('module', 'easyddb_instagram_block') . '/css/instagram-block.css'],
+      ],
+    ],
+  ];
+
+  // Check that block configuration is available.
+  if (!$token_available || empty($user_id) || empty($hashtag_id)) {
+    $content = easyddb_instagram_block_get_configuration_reminder();
+  }
+  else {
+    // Build and send request to the Facebook API.
+    try {
+      switch ($delta) {
+        case 'easyddb_instagram_block_hashtag_media':
+          $values = variable_get('easyddb_instagram_block_hashtag_media_block_settings', array());
+          $request = new InstagramDataRequest($user_id, $access_token);
+          $request->requestMedia($hashtag_id, $values['media_edge']);
+          $block['subject'] = t('Instagram Block - Hashtag Media');
+          break;
+      }
+    }
+    catch (Exception $e) {
+      watchdog_exception('easyddb_instagram_block', $e);
+      // Return no content, the request failed.
+      return $block;
+    }
+
+    $response = $request->getImages($values['count']);
+    foreach ($response as $img) {
+      $url = $img->media_url;
+      $components = parse_url($url);
+
+      $content['children'][] = array(
+        '#markup' => '',
+        '#theme' => 'easyddb_instagram_block',
+        '#post' => $img,
+        '#href' => $img->media_url,
+        '#src' => str_replace($components['scheme'] . '://', '//', $url),
+        '#width' => $values['width'],
+        '#height' => $values['height'],
+      );
+    }
+  }
+
+  $block['content']['#markup'] = theme('easyddb_instagram_block', array(
+    'content' => $content,
+    'response' => $response ?? NULL,
+  ));
+
+  return $block;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function easyddb_instagram_block_menu() {
+  $items[IG_BLOCK_BASE_SETTINGS_PATH] = array(
+    'title' => 'Instagram Block',
+    'description' => 'Configuration page for Instagram Block.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('easyddb_instagram_block_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'easyddb_instagram_block.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items[IG_BLOCK_BASE_SETTINGS_PATH . '/settings'] = $items[IG_BLOCK_BASE_SETTINGS_PATH];
+  $items[IG_BLOCK_BASE_SETTINGS_PATH . '/settings']['type'] = MENU_DEFAULT_LOCAL_TASK;
+
+  $items[IG_BLOCK_BASE_SETTINGS_PATH_LOGIN] = array(
+    'title' => 'Facebook Login',
+    'description' => 'Callback that executes right after login in with Instagram.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'easyddb_instagram_block_login',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items[IG_BLOCK_BASE_SETTINGS_PATH_LOGOUT] = array(
+    'title' => 'Facebook Logout',
+    'description' => 'Callback that executes right after login in from Facebook.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'easyddb_instagram_block_logout',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Authorize Facebook application.
+ */
+function easyddb_instagram_block_login() {
+  if (isset($_GET['error'])) {
+    drupal_set_message(t('An error happened while connecting with Facebook. Reason: %reason. Description: %description',
+      [
+        '%reason' => $_GET['error_reason'],
+        '%description' => $_GET['error_description'],
+      ]), 'error');
+  }
+  else {
+    try {
+      $app_id = variable_get('easyddb_instagram_block_fb_app_id', '');
+      $app_secret = variable_get('easyddb_instagram_block_fb_app_secret', '');
+      $facebookAuth = new Facebook($app_id, $app_secret);
+
+      $auth = $facebookAuth->authAuthorize();
+      $response = drupal_http_request($auth);
+      drupal_goto($response->redirect_url);
+    }
+    catch (\Exception $e) {
+      // Do nothing with the exception.
+      drupal_set_message($e->getMessage(), 'error');
+    }
+  }
+  drupal_goto(IG_BLOCK_BASE_SETTINGS_PATH);
+}
+
+/**
+ * De-authorize Facebook application.
+ */
+function easyddb_instagram_block_logout() {
+  variable_del('easyddb_instagram_block_access_token');
+  variable_del('easyddb_instagram_block_access_token_expires');
+  drupal_goto(IG_BLOCK_BASE_SETTINGS_PATH);
+}
+
+/**
+ * Implements hook_theme().
+ */
+function easyddb_instagram_block_theme() {
+  return [
+    'easyddb_instagram_block' => [
+      'variables' => [
+        'height' => NULL,
+        'width' => NULL,
+        'src' => NULL,
+        'href' => NULL,
+        'post' => NULL,
+      ],
+      'template' => 'templates/easyddb_instagram_block',
+    ],
+  ];
+}
+
+/**
+ * Builds render array to remind user to configure block settings.
+ */
+function easyddb_instagram_block_get_configuration_reminder() {
+  return [
+    '#markup' => t('Missing configuration or Access token expired. Please !configure.',
+      ['!configure' => l(t('configure'), IG_BLOCK_BASE_SETTINGS_PATH)])
+  ];
+}
+
+/**
+ * Implements hook_cron().
+ */
+function easyddb_instagram_block_cron() {
+  $token_expires = variable_get('easyddb_instagram_block_access_token_expires', '');
+  // Token is valid for 60 days, we will refresh this within 7 days before
+  // expiration.
+  if (REQUEST_TIME >= $token_expires - 604800) {
+    $instagram = new Facebook(
+      variable_get('easyddb_instagram_block_app_id', ''),
+      variable_get('easyddb_instagram_block_app_secret', '')
+    );
+
+    $response = $instagram->authRefreshAccessToken(variable_get('easyddb_instagram_block_access_token', ''));
+    variable_set('easyddb_instagram_block_access_token', $response->access_token);
+    variable_set('easyddb_instagram_block_access_token_expires', REQUEST_TIME + $response->expires_in);
+  }
+}
