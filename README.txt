@@ -25,6 +25,7 @@ INITIAL CONFIGURATION
 ----------------------
 
 You can configure the settings for your Instagram block by going to the configuration page (admin/config/services/easyddb_instagram_block).
+After adding required fields and save - FacebookLogin link will appear for getting first token.
 Before adding configuration to this block, you will need:
 1. Facebook Account connected with Instagram Business Account
 2. A Facebook Page connected with Instagram (see https://smashballoon.com/doc/instagram-business-profiles/?instagram)

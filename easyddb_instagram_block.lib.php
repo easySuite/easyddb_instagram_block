@@ -158,7 +158,7 @@ class Facebook {
       'response_type' => 'code',
     ];
 
-    return BASE_AUTHORIZATION_URL . '/' . DEFAULT_GRAPH_VERSION . '/' . ENDPOINT_DIALOG_AUTH . http_build_query($params, '', $separator);
+    return BASE_AUTHORIZATION_URL . '/' . DEFAULT_GRAPH_VERSION . '/' . ENDPOINT_DIALOG_AUTH . '?' . http_build_query($params, '', $separator);
   }
 
   /**
@@ -182,7 +182,7 @@ class Facebook {
       $response = $client->post(ENDPOINT_TOKEN, ['form_params' => $params]);
       $contents = $response->getBody()->getContents();
       $decode = json_decode($contents);
-      $this->shortLivedAccessToken = $decode->data->access_token;
+      $this->shortLivedAccessToken = $decode->access_token;
 
       return $this->authLongLivedAccessToken();
     }
@@ -212,9 +212,9 @@ class Facebook {
 
       $contents = $response->getBody()->getContents();
       $decode = json_decode($contents);
-      $this->longLivedAccessToken = $decode->data->access_token;
+      $this->longLivedAccessToken = $decode->access_token;
 
-      return $decode->data;
+      return $decode;
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
@@ -329,7 +329,7 @@ class InstagramDataRequest {
 
       $contents = $response->getBody()->getContents();
       $decode = json_decode($contents);
-      return $decode->data->id;
+      return $decode->data[0]->id;
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
@@ -350,7 +350,7 @@ class InstagramDataRequest {
    *   Return list of media or catch Exception.
    */
   public function requestMedia(int $hashtagId, string $mediaEdge, array $fields = []) {
-    $fields = $fields ?? $this->getBasicMediaFields();
+    $fields = !empty($fields) ? $fields : $this->getBasicMediaFields();
     $client = new Client(['base_uri' => BASE_GRAPH_URL]);
     try {
       $url = implode('/', [$hashtagId, $mediaEdge]);
@@ -396,25 +396,28 @@ class InstagramDataRequest {
    *   Return array with images.
    */
   public function getImages(int $count) {
-    $i = 1;
+    $i = 0;
     $returnImagesArray = [];
 
-    while ($i <= $count) {
+    while ($i < $count) {
       $currentImages = $this->mediaData;
-      foreach ($currentImages['data'] as $values) {
-        if ($values['media_type'] === 'IMAGE') {
-          $returnImagesArray[$i] = $values;
+      foreach ($currentImages->data as $values) {
+        if ($values->media_type === 'IMAGE') {
           $i++;
+          $returnImagesArray[$i] = $values;
+        }
+        if ($i === $count) {
+          return $returnImagesArray;
         }
       }
 
-      if (count($currentImages['data']) < REQUEST_LIMIT) {
+      if (count($currentImages->data) < REQUEST_LIMIT) {
         break;
       }
 
       $client = new Client();
       try {
-        $request = new Request('GET', $currentImages['paging']['next']);
+        $request = new Request('GET', $currentImages->paging->next);
         $response = $client->send($request);
 
         $contents = $response->getBody()->getContents();

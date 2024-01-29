@@ -14,13 +14,13 @@ function easyddb_instagram_block_install() {
 
   $insta_block = array(
     'hashtag' => '',
-    'media_edge' => ENDPOINT_MEDIA_RECENT,
+    'media_edge' => 'recent_media',
     'count' => '4',
     'width' => '100',
     'height' => '100',
   );
 
-  variable_set('easyddb_instagram_block_hashtag_media_block_settings', $insta_block);
+  variable_set('easyddb_instagram_block_hashtag_block_settings', $insta_block);
 }
 
 /**
@@ -29,7 +29,7 @@ function easyddb_instagram_block_install() {
  * Deletes variables.
  */
 function easyddb_instagram_block_uninstall() {
-  variable_del('easyddb_instagram_block_hashtag_media_block_settings');
+  variable_del('easyddb_instagram_block_hashtag_block_settings');
   variable_del('easyddb_instagram_block_access_token');
   variable_del('easyddb_instagram_block_access_token_expires');
   variable_del('easyddb_instagram_block_fb_app_id');
