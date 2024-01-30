@@ -8,7 +8,7 @@
  *  - https://developers.facebook.com/docs/instagram/business-login-for-instagram
  *  - https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow
  *  - https://developers.facebook.com/docs/facebook-login/guides/access-tokens
- *  - https://developers.facebook.com/docs/instagram-api/guides/hashtag-search
+ *  - https://developers.facebook.com/docs/instagram-api/guides/hashtag-search.
  */
 
 use GuzzleHttp\Client;
@@ -188,6 +188,7 @@ class Facebook {
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
+      watchdog_exception('easyddb_instagram_block', $e);
     }
   }
 
@@ -218,6 +219,7 @@ class Facebook {
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
+      watchdog_exception('easyddb_instagram_block', $e);
     }
   }
 
@@ -246,6 +248,7 @@ class Facebook {
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
+      watchdog_exception('easyddb_instagram_block', $e);
     }
   }
 
@@ -333,6 +336,7 @@ class InstagramDataRequest {
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
+      watchdog_exception('easyddb_instagram_block', $e);
     }
   }
 
@@ -369,6 +373,7 @@ class InstagramDataRequest {
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
+      watchdog_exception('easyddb_instagram_block', $e);
     }
   }
 
@@ -381,8 +386,10 @@ class InstagramDataRequest {
   public function getBasicMediaFields() {
     return [
       'id',
+      'caption',
       'media_type',
       'media_url',
+      'permalink',
     ];
   }
 
@@ -425,6 +432,7 @@ class InstagramDataRequest {
       }
       catch (\Exception $e) {
         drupal_set_message($e->getMessage(), 'error');
+        watchdog_exception('easyddb_instagram_block', $e);
       }
 
     }

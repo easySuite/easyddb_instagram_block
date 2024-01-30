@@ -49,6 +49,21 @@ function easyddb_instagram_block_admin_settings($form, &$form_state) {
     '#required' => TRUE,
   ];
 
+  $form['easyddb_instagram_block_cache_request'] = [
+    '#type' => 'select',
+    '#title' => t('Cache Request Lifetime'),
+    '#description' => t('Cache will be auto-removed if hashtag, number of images or type request will be changed under block configuration.'),
+    '#options' => [
+      '1-hour' => t('1 hour'),
+      '2-hour' => t('2 hours'),
+      '4-hour' => t('4 hours'),
+      '8-hour' => t('8 hours'),
+      '12-hour' => t('12 hours'),
+      '24-hour' => t('24 hours'),
+    ],
+    '#default_value' => variable_get('easyddb_instagram_block_cache_request', '2-hours'),
+  ];
+
   $form['easyddb_instagram_block_access_token'] = [
     '#type' => 'textarea',
     '#title' => t('Long-live Access Token'),

@@ -32,6 +32,7 @@ function easyddb_instagram_block_uninstall() {
   variable_del('easyddb_instagram_block_hashtag_block_settings');
   variable_del('easyddb_instagram_block_access_token');
   variable_del('easyddb_instagram_block_access_token_expires');
+  variable_del('easyddb_instagram_block_cache_request');
   variable_del('easyddb_instagram_block_fb_app_id');
   variable_del('easyddb_instagram_block_fb_app_secret');
   variable_del('easyddb_instagram_block_ig_user_id');

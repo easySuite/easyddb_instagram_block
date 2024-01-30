@@ -32,3 +32,11 @@ Before adding configuration to this block, you will need:
 3. A Facebook APP registered in https://developers.facebook.com/apps
   3.1 App type: Business
   3.2 Added product 'Facebook Login for Business', in which settings is needed to specify SITE_URL/admin/config/services/easyddb_instagram_block
+  3.3 User that connect to Facebook in settings should be Administrator or Developer of this app under https://developers.facebook.com/apps/[APP_ID]/roles/roles/
+
+NOTES/WARNINGS/LIMITATION
+-------------------------
+1. There are limits of requests to Facebook API. Check statistic and updated number of limit for requests under https://developers.facebook.com/apps/[APP_ID]/rate-limit-details/app/
+2. You can query a maximum of 30 unique hashtags within a 7 day period. (https://developers.facebook.com/docs/instagram-api/reference/ig-hashtag-search)
+3. FB API Only returns public photos and videos.
+4. Recent Media: Only returns media objects published within 24 hours of query execution.
