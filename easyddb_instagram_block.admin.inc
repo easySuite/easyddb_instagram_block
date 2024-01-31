@@ -18,7 +18,7 @@ function easyddb_instagram_block_admin_settings($form, &$form_state) {
   $token_available = !empty($access_token) && ($access_token_expire > REQUEST_TIME);
 
   if (isset($_GET['code']) && !$token_available) {
-    $facebookAuth = new Facebook($app_id, $app_secret);
+    $facebookAuth = new EasyddbInstagramBlockFacebook($app_id, $app_secret);
 
     $data = $facebookAuth->authGetAccessToken($_GET['code']);
     variable_set('easyddb_instagram_block_access_token', $data->access_token);
@@ -106,7 +106,7 @@ function easyddb_instagram_block_admin_settings($form, &$form_state) {
 
   if (!empty($app_id) && !empty($app_secret)) {
     if (!$token_available) {
-      $fb = new Facebook($app_id, $app_secret);
+      $fb = new EasyddbInstagramBlockFacebook($app_id, $app_secret);
 
       $form['login_link'] = [
         '#prefix' => '<p>' . t('You need to connect your Facebook account to fetch data.') . '</p>',

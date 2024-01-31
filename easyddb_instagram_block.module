@@ -5,6 +5,8 @@
  * Module file for the easyddb_instagram_block module.
  */
 
+require_once dirname(__FILE__) . '/easyddb_instagram_block.lib.php';
+
 /*
  * @const string module configuration path.
  */
@@ -102,13 +104,14 @@ function easyddb_instagram_block_block_configure($delta = '') {
     t('Only returns public photos.'),
     t('NOTE: Recent Images - Only returns media objects published within 24 hours of query execution.'),
   ];
+
   $form['media_edge'] = [
     '#type' => 'select',
     '#title' => t('Image type'),
     '#description' => implode('<br>', $media_description),
     '#options' => [
-      'top_media' => t('Top Images'),
-      'recent_media' => t('Recent Images'),
+      ENDPOINT_MEDIA_TOP => t('Top Images'),
+      ENDPOINT_MEDIA_RECENT => t('Recent Images'),
     ],
   ];
 
@@ -133,7 +136,7 @@ function easyddb_instagram_block_block_configure($delta = '') {
     '#description' => t('Configure block caching.'),
     '#options' => [
       DRUPAL_CACHE_GLOBAL => t('Cache block globally'),
-      DRUPAL_NO_CACHE => t('Don\'t cache block'),
+      DRUPAL_NO_CACHE => t("Don't cache block"),
     ],
   ];
 
@@ -145,7 +148,7 @@ function easyddb_instagram_block_block_configure($delta = '') {
       ));
 
       $form['hashtag']['#default_value'] = $form['#block_data']['hashtag'] ?? variable_get('easyddb_instagram_block_hashtag', '');
-      $form['media_edge']['#default_value'] = $form['#block_data']['media_edge'] ?? ENDPOINT_MEDIA_RECENT;
+      $form['media_edge']['#default_value'] = $form['#block_data']['media_edge'] ?? ENDPOINT_MEDIA_TOP;
       $form['count']['#default_value'] = $form['#block_data']['count'] ?? 0;
       $form['width']['#default_value'] = $form['#block_data']['width'] ?? 100;
       $form['height']['#default_value'] = $form['#block_data']['height'] ?? 100;
@@ -181,7 +184,7 @@ function easyddb_instagram_block_block_save($delta = '', $edit = []) {
         variable_set('easyddb_instagram_block_hashtag', $save_values['hashtag']);
         $user_id = variable_get('easyddb_instagram_block_ig_user_id', '');
         $access_token = variable_get('easyddb_instagram_block_access_token', '');
-        $request = new InstagramDataRequest($user_id, $access_token);
+        $request = new EasyddbInstagramBlockDataRequest($user_id, $access_token);
         $hashtag_id = $request->requestHashtagId($save_values['hashtag']);
         variable_set('easyddb_instagram_block_hashtag_id', $hashtag_id);
       }
@@ -225,24 +228,27 @@ function easyddb_instagram_block_block_view($delta = '') {
   }
   else {
     $cache = cache_get('easyddb_instagram_block');
-    if ($cache && REQUEST_TIME < $cache->expire) {
+    $cache_data_exist = isset($cache) && !empty($cache->data) && REQUEST_TIME < (int) $cache->expire;
+    if ($cache_data_exist) {
       $response = $cache->data;
     }
-    else {
-      $request = new InstagramDataRequest($user_id, $access_token);
+    elseif (!isset($cache) || empty($cache->data) || REQUEST_TIME > (int) $cache->expire) {
+      $request = new EasyddbInstagramBlockDataRequest($user_id, $access_token);
       $request->requestMedia($hashtag_id, $values['media_edge']);
       $response = $request->getImages((int) $values['count']);
 
       $cache_time = variable_get('easyddb_instagram_block_cache_request', '2-hour');
       $expire = strtotime(str_replace('-', ' ', $cache_time), REQUEST_TIME);
-      cache_set('easyddb_instagram_block', $response, 'cache', $expire);
+      if (!empty($response)) {
+        cache_set('easyddb_instagram_block', $response, 'cache', $expire);
+      }
     }
     foreach ($response as $img) {
       $content[] = [
         '#markup' => '',
         '#theme' => 'easyddb_instagram_block_image',
         '#id' => $img->id,
-        '#caption' => $img->caption,
+        '#caption' => text_summary($img->caption, 'filter_htmlcorrector', 100),
         '#href' => $img->permalink,
         '#src' => $img->media_url,
         '#width' => $values['width'],
@@ -251,9 +257,8 @@ function easyddb_instagram_block_block_view($delta = '') {
     }
     $block['subject'] = '#' . $values['hashtag'];
   }
-
   $block['content']['#markup'] = theme('easyddb_instagram_block', array(
-    'content' => $content,
+    'content' => !empty($content) ? $content : t('There is no images to display.'),
     'response' => $response,
   ));
 
@@ -279,7 +284,7 @@ function easyddb_instagram_block_theme() {
     'easyddb_instagram_block' => [
       'variables' => [
         'content' => NULL,
-        'response' => NULL
+        'response' => NULL,
       ],
       'template' => 'templates/easyddb_instagram_block',
     ],
@@ -292,7 +297,7 @@ function easyddb_instagram_block_theme() {
 function easyddb_instagram_block_get_configuration_reminder() {
   return [
     '#markup' => t('Missing configuration or Access token expired. Please !configure.',
-      ['!configure' => l(t('configure'), IG_BLOCK_BASE_SETTINGS_PATH)])
+      ['!configure' => l(t('configure'), IG_BLOCK_BASE_SETTINGS_PATH)]),
   ];
 }
 
@@ -302,16 +307,15 @@ function easyddb_instagram_block_get_configuration_reminder() {
 function easyddb_instagram_block_cron() {
   $app_id = variable_get('easyddb_instagram_block_app_id', '');
   $app_secret = variable_get('easyddb_instagram_block_app_secret', '');
-  $ig_user_id = variable_get('easyddb_instagram_block_ig_user_id', '');
-  if (empty($app_id) || empty($app_secret) || empty($ig_user_id)) {
+
+  if (empty($app_id) || empty($app_secret)) {
     return;
   }
   $token_expires = variable_get('easyddb_instagram_block_access_token_expires', 0);
   // Token is valid for 60 days, we will refresh this within 7 days before
   // expiration.
-  if (REQUEST_TIME >= $token_expires - 604800) {
-    $fb_connect = new Facebook($app_id, $app_secret);
-
+  if (REQUEST_TIME >= (int) $token_expires - 604800) {
+    $fb_connect = new EasyddbInstagramBlockFacebook($app_id, $app_secret);
     $response = $fb_connect->authRefreshAccessToken(variable_get('easyddb_instagram_block_access_token', ''));
     variable_set('easyddb_instagram_block_access_token', $response->access_token);
     variable_set('easyddb_instagram_block_access_token_expires', REQUEST_TIME + $response->expires_in);

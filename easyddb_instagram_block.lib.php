@@ -5,10 +5,10 @@
  * Facebook classes to integrate with the Facebook API.
  *
  * Facebook Docs:
- *  - https://developers.facebook.com/docs/instagram/business-login-for-instagram
- *  - https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow
- *  - https://developers.facebook.com/docs/facebook-login/guides/access-tokens
- *  - https://developers.facebook.com/docs/instagram-api/guides/hashtag-search.
+ * https://developers.facebook.com/docs/instagram/business-login-for-instagram
+ * https://developers.facebook.com/docs/facebook-login/guides/advanced/manual-flow
+ * https://developers.facebook.com/docs/facebook-login/guides/access-tokens
+ * https://developers.facebook.com/docs/instagram-api/guides/hashtag-search.
  */
 
 use GuzzleHttp\Client;
@@ -58,7 +58,7 @@ const REQUEST_LIMIT = 50;
 /**
  * Core functionality for Facebook connection.
  */
-class Facebook {
+class EasyddbInstagramBlockFacebook {
 
   /**
    * Facebook application id.
@@ -208,7 +208,7 @@ class Facebook {
           'client_secret' => $this->appSecret,
           'fb_exchange_token' => $this->shortLivedAccessToken,
           'grant_type' => 'fb_exchange_token',
-        ]
+        ],
       ]);
 
       $contents = $response->getBody()->getContents();
@@ -239,12 +239,12 @@ class Facebook {
           'client_secret' => $this->appSecret,
           'redirect_uri' => url(IG_BLOCK_BASE_SETTINGS_PATH, ['absolute' => TRUE]),
           'access_token' => $access_token,
-        ]
+        ],
       ]);
 
       $contents = $response->getBody()->getContents();
       $decode = json_decode($contents);
-      return $decode->data->code;
+      return $decode->code;
     }
     catch (\Exception $e) {
       drupal_set_message($e->getMessage(), 'error');
@@ -271,7 +271,7 @@ class Facebook {
 /**
  * Basic functionality for fetching data related to Instagram.
  */
-class InstagramDataRequest {
+class EasyddbInstagramBlockDataRequest {
   /**
    * Instagram user ID.
    *
@@ -411,7 +411,7 @@ class InstagramDataRequest {
       foreach ($currentImages->data as $values) {
         if ($values->media_type === 'IMAGE') {
           $i++;
-          $returnImagesArray[$i] = $values;
+          $returnImagesArray[] = $values;
         }
         if ($i === $count) {
           return $returnImagesArray;

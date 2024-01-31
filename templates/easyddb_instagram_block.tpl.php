@@ -6,7 +6,7 @@
  *
  * Available variables:
  *  content:   The Instagram images.
- *  response:  Instagram API response.
+ *  response:  Facebook API response.
  */
 
 print render($content);
