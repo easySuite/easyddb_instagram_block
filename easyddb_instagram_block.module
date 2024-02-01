@@ -5,22 +5,31 @@
  * Module file for the easyddb_instagram_block module.
  */
 
-require_once dirname(__FILE__) . '/easyddb_instagram_block.lib.php';
+use Drupal\xautoload\Adapter\LocalDirectoryAdapter;
+use EasyddbFacebook\InstagramBlock\EasyddbInstagramBlockDataRequest;
+use EasyddbFacebook\InstagramBlock\EasyddbInstagramBlockFacebook;
 
-/*
+/**
  * @const string module configuration path.
  */
 const IG_BLOCK_BASE_SETTINGS_PATH = 'admin/config/services/easyddb_instagram_block';
-/*
+/**
  * @const string module logout path.
  */
 const IG_BLOCK_BASE_SETTINGS_PATH_LOGOUT = 'admin/config/services/easyddb_instagram_block/logout';
 
 /**
+ * Implements hook_xautoload().
+ */
+function easyddb_instagram_block_xautoload(LocalDirectoryAdapter $adapter): void {
+  $adapter->addPsr4('EasyddbFacebook', 'lib/EasyddbFacebook/src');
+}
+
+/**
  * Implements hook_help().
  */
-function easyddb_instagram_block_help($path, $arg) {
-  if ($path == 'admin/help#' . IG_BLOCK_BASE_SETTINGS_PATH) {
+function easyddb_instagram_block_help($path) {
+  if ($path === 'admin/help#' . IG_BLOCK_BASE_SETTINGS_PATH) {
     return t('Module for getting Instagram images by hashtag.');
   }
 }
@@ -28,7 +37,7 @@ function easyddb_instagram_block_help($path, $arg) {
 /**
  * Implements hook_menu().
  */
-function easyddb_instagram_block_menu() {
+function easyddb_instagram_block_menu(): array {
   $items[IG_BLOCK_BASE_SETTINGS_PATH] = array(
     'title' => 'Easyddb Instagram Block',
     'description' => 'Configuration page for Instagram Block.',
@@ -64,11 +73,11 @@ function easyddb_instagram_block_logout() {
  *
  * Defines the new instagram block.
  */
-function easyddb_instagram_block_block_info() {
+function easyddb_instagram_block_block_info(): array {
   $hashtag_media_config = variable_get('easyddb_instagram_block_hashtag_block_settings', []);
   $blocks['easyddb_instagram_block_hashtag'] = array(
     'info' => t('Instagram Block - Hashtag Media'),
-    'cache' => isset($hashtag_media_config['block_cache']) ? $hashtag_media_config['block_cache'] : DRUPAL_CACHE_GLOBAL,
+    'cache' => $hashtag_media_config['block_cache'] ?? DRUPAL_CACHE_GLOBAL,
   );
 
   return $blocks;
@@ -79,7 +88,7 @@ function easyddb_instagram_block_block_info() {
  *
  * Set values to be used when rendering the block later.
  */
-function easyddb_instagram_block_block_configure($delta = '') {
+function easyddb_instagram_block_block_configure($delta = ''): array {
   $form = [];
   $description = '';
 
@@ -88,7 +97,6 @@ function easyddb_instagram_block_block_configure($delta = '') {
   $form['description'] = [
     '#title' => t('Description'),
     '#type' => 'item',
-    '#markup' => '',
     '#weight' => -50,
   ];
 
@@ -110,8 +118,8 @@ function easyddb_instagram_block_block_configure($delta = '') {
     '#title' => t('Image type'),
     '#description' => implode('<br>', $media_description),
     '#options' => [
-      ENDPOINT_MEDIA_TOP => t('Top Images'),
-      ENDPOINT_MEDIA_RECENT => t('Recent Images'),
+      EasyddbInstagramBlockFacebook::ENDPOINT_MEDIA_TOP => t('Top Images'),
+      EasyddbInstagramBlockFacebook::ENDPOINT_MEDIA_RECENT => t('Recent Images'),
     ],
   ];
 
@@ -148,7 +156,7 @@ function easyddb_instagram_block_block_configure($delta = '') {
       ));
 
       $form['hashtag']['#default_value'] = $form['#block_data']['hashtag'] ?? variable_get('easyddb_instagram_block_hashtag', '');
-      $form['media_edge']['#default_value'] = $form['#block_data']['media_edge'] ?? ENDPOINT_MEDIA_TOP;
+      $form['media_edge']['#default_value'] = $form['#block_data']['media_edge'] ?? EasyddbInstagramBlockFacebook::ENDPOINT_MEDIA_TOP;
       $form['count']['#default_value'] = $form['#block_data']['count'] ?? 0;
       $form['width']['#default_value'] = $form['#block_data']['width'] ?? 100;
       $form['height']['#default_value'] = $form['#block_data']['height'] ?? 100;
@@ -190,11 +198,8 @@ function easyddb_instagram_block_block_save($delta = '', $edit = []) {
       }
 
       if ($updated) {
-        // Clear cache.
         cache_clear_all('easyddb_instagram_block', 'cache');
       }
-
-      $block['subject'] = t('Instagram Block - Hashtag Media');
       break;
   }
 }
@@ -204,7 +209,7 @@ function easyddb_instagram_block_block_save($delta = '', $edit = []) {
  *
  * Fetches the instagram photos and creates a render array.
  */
-function easyddb_instagram_block_block_view($delta = '') {
+function easyddb_instagram_block_block_view($delta = ''): array {
   $user_id = variable_get('easyddb_instagram_block_ig_user_id', '');
   $access_token = variable_get('easyddb_instagram_block_access_token', '');
   $access_token_expire = variable_get('easyddb_instagram_block_access_token_expires', 0);
@@ -268,7 +273,7 @@ function easyddb_instagram_block_block_view($delta = '') {
 /**
  * Implements hook_theme().
  */
-function easyddb_instagram_block_theme() {
+function easyddb_instagram_block_theme(): array {
   return [
     'easyddb_instagram_block_image' => [
       'variables' => [
@@ -294,7 +299,7 @@ function easyddb_instagram_block_theme() {
 /**
  * Builds render array to remind user to configure block settings.
  */
-function easyddb_instagram_block_get_configuration_reminder() {
+function easyddb_instagram_block_get_configuration_reminder(): array {
   return [
     '#markup' => t('Missing configuration or Access token expired. Please !configure.',
       ['!configure' => l(t('configure'), IG_BLOCK_BASE_SETTINGS_PATH)]),

@@ -5,12 +5,12 @@
  * Contains forms and pages for instagram admin pages.
  */
 
+use EasyddbFacebook\InstagramBlock\EasyddbInstagramBlockFacebook;
+
 /**
  * Form for authenticating user with Facebook API.
  */
 function easyddb_instagram_block_admin_settings($form, &$form_state) {
-  $form = [];
-
   $access_token = variable_get('easyddb_instagram_block_access_token', '');
   $access_token_expire = variable_get('easyddb_instagram_block_access_token_expires', 0);
   $app_id = variable_get('easyddb_instagram_block_fb_app_id', '');
