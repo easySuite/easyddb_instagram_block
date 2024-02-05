@@ -1,10 +1,12 @@
 <?php
+
 /**
  * @file
  * Default theme implementation of an Easyddb Instagram block.
  *
  * Available variables:
- * - post: The entire data array returned from the Instagram API request.
+ * - id: The id of the image.
+ * - caption: The caption of the image.
  * - href: The url to the Instagram post page.
  * - src: The source url to the instagram image.
  * - width: The display width of the image.
