@@ -3,5 +3,6 @@ description = Creates a block that displays images from instagram by hashtag.
 core = 7.x
 package = easyOPAC
 version = "7.x-6.6.1"
+configure = admin/config/services/easyddb_instagram_block
 dependencies[] = block
 dependencies[] = xautoload
