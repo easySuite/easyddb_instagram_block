@@ -11,6 +11,6 @@
  * - height: The display height of the image.
  */
 ?>
-<a class="group  web-container" target="_blank" data-instagram-rel="1" href="<?php print $href ?>">
+<a class="group web-container" target="_blank" data-instagram-rel="1" href="<?php print $href ?>">
   <img alt="<?php print $caption; ?>" style="float: left; width: <?php print $width ?>px; height: <?php print $height ?>px;" src="<?php print $src ?>">
 </a>
